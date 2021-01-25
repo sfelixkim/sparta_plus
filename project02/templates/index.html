@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+        <meta property="og:title" content="Sparta Vocabulary Notebook"/>
+        <meta property="og:description" content="mini project for Web Plus"/>
+        <meta property="og:image" content="{{ url_for('static', filename='logo_red.png') }}"/>
+        <title>Sparta Vocabulary Notebook</title>
+
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+              integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+              crossorigin="anonymous">
+        <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+                integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+                crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                crossorigin="anonymous"></script>
+
+        <style>
+
+            .wrap {
+                /*width: 80%;*/
+                /*margin: auto;*/
+                background-color: RGBA(232, 52, 78, 0.2);
+
+                min-height: 100vh;
+                /*padding-top: 100px;*/
+                padding-bottom: 50px;
+                /*text-align: center;*/
+            }
+
+            .banner {
+                width: 100%;
+                height: 200px;
+                background-color: white;
+                /*background-image: url("../static/logo_red.png");*/
+                background-image: url('{{url_for("static", filename="logo_red.png")}}');
+                background-position: center;
+                background-size: contain;
+                background-repeat: no-repeat;
+
+                text-align: center;
+                padding-top: 100px;
+                cursor: pointer;
+
+            }
+
+
+            .search-box {
+                width: 70%;
+                margin: 100px auto 50px auto;
+                max-width: 700px;
+            }
+
+            .table {
+                width: 80%;
+                max-width: 800px;
+                margin: auto;
+                table-layout: fixed;
+            }
+
+            .table th {
+                border-top-style: none;
+            }
+
+            td {
+                background-color: white;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                white-space: nowrap;
+            }
+
+            td > a, a:visited, a:hover, a:active {
+                color: black;
+            }
+
+            tr.highlight > td {
+                background-color: #e8344e;
+            }
+
+            thead:first-child tr:first-child th:first-child {
+                border-radius: 10px 0 0 0;
+            }
+
+            thead:first-child tr:first-child th:last-child {
+                border-radius: 0 10px 0 0;
+            }
+
+            tbody:last-child tr:last-child td:first-child {
+                border-radius: 0 0 0 10px;
+            }
+
+            tbody:last-child tr:last-child td:last-child {
+                border-radius: 0 0 10px 0;
+            }
+
+        </style>
+
+        <script>
+            let word_list = []
+
+            $(document).ready(function () {
+                refresh_list();
+            })
+
+            function find_word() {
+                let word = $("#input-word").val().toLowerCase();
+                console.log(word, $("#input-word").val())
+                if (word_list.includes(word)) {
+                    $(`#word-${word}`).addClass('highlight').siblings().removeClass('highlight');
+                    $(`#word-${word}`).get(0).scrollIntoView();
+                    $(`#word-${word}`).css("color", "white");
+                    $(`#word-${word} > td > a`).css("color", "white");
+
+
+                } else {
+                    $.ajax({
+                        type: "GET",
+                        url: `https://owlbot.info/api/v4/dictionary/${word}`,
+                        beforeSend: function (xhr) {
+                            xhr.setRequestHeader("Authorization", "Token 990c8653785cd4bf04ba012237c7f0ba3d49b50f");
+                        },
+                        data: {},
+                        error: function (xhr, status, error) {
+                            alert("Word not found in dictionary; Try another word");
+                        },
+                        success: function (response) {
+                            window.location.href = `/detail/${word}?status_give=new`
+                        }
+                    })
+                    ;
+                }
+
+            }
+
+            function refresh_list() {
+                $("#tbody-box").empty();
+                word_list = [];
+                $.ajax({
+                    type: "GET",
+                    url: "/api/get_list",
+                    data: {},
+                    success: function (response) {
+                        let words = response["words"];
+                        for (let i = 0; i < words.length; i++) {
+                            let word = words[i];
+                            word_list.push(word["word"])
+                            let html_temp = `<tr id="word-${word["word"]}">
+                                                <td><a href="/detail/${word["word"]}?status_give=old">${word["word"]}</a></td>
+                                                <td>${word["definition"]}</td>
+                                            </tr>`
+                            $("#tbody-box").append(html_temp)
+                        }
+                    }
+                });
+            }
+        </script>
+    </head>
+    <body>
+        <div class="wrap" id="background">
+            <div class="banner">
+                <!--                <h1>스파르타 단어장</h1>-->
+            </div>
+            <div class="search-box d-flex justify-content-center">
+                <input id="input-word" class="form-control" style="margin-right: 0.5rem">
+                <button class="btn btn-light" onclick="find_word()"><i class="fa fa-search"></i></button>
+            </div>
+            <div>
+                <table class="table">
+                    <thead class="thead-light">
+                        <tr>
+                            <th scope="col" style="width:30%">WORD</th>
+                            <th scope="col">MEANING</th>
+
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-box">
+                        <tr id="word-word">
+                            <td><a href="#">word</a></td>
+                            <td>a single distinct meaningful element of speech or writing, used with others (or
+                                sometimes
+                                alone) to form a sentence and typically shown with a space on either side when written
+                                or
+                                printed.
+                            </td>
+                        </tr>
+                        <tr id="word-dictionary">
+                            <td><a href="#">dictionary</a></td>
+                            <td>a book or electronic resource that lists the words of a language (typically in
+                                alphabetical
+                                order) and gives their meaning, or gives the equivalent words in a different language,
+                                often
+                                also providing information about pronunciation, origin, and
+                            </td>
+                        </tr>
+                        <tr id="word-name">
+                            <td><a href="#">name</a></td>
+                            <td>a word or set of words by which a person or thing is known, addressed, or referred to.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+        </div>
+    </body>
+</html>

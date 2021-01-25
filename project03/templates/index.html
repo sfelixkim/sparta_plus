@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+        <title>스파르타코딩클럽 | 맛집 검색</title>
+        <script type="text/javascript"
+                src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=1jejchnryy&submodules=geocoder"></script>
+
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+              integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+              crossorigin="anonymous">
+        <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+                integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+                crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                crossorigin="anonymous"></script>
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+        <style>
+            .wrap {
+                width: 90%;
+                max-width: 750px;
+                margin: 0 auto;
+            }
+
+            .banner {
+                width: 100%;
+                height: 20vh;
+                background-image: url("{{ url_for("static", filename="banner.jpg") }}");
+                background-position: center;
+                background-size: contain;
+                background-repeat: repeat;
+
+            }
+
+            h1.title {
+                font-family: 'Jua', sans-serif;
+
+                color: white;
+                font-size: 3rem;
+            }
+
+            h5 {
+                font-family: 'Jua', sans-serif;
+            }
+
+            .matjip-list {
+                overflow: scroll;
+                width: 100%;
+                height: calc(20vh - 30px);
+                position: relative;
+            }
+
+            .card-title, .card-subtitle {
+                display: inline;
+            }
+
+            #map {
+                width: 100%;
+                height: 50vh;
+                margin: 20px auto 20px auto;
+            }
+
+            .btn-sparta {
+                color: #fff;
+                background-color: #e8344e;
+                border-color: #e8344e;
+            }
+
+            .iw-inner {
+                padding: 10px;
+                font-size: smaller;
+            }
+
+            i {
+                color: #e8344e;
+            }
+
+            i:hover {
+                cursor: pointer;
+            }
+        </style>
+        <script>
+            let y_cen = 37.4981125;   // lat
+            let x_cen = 127.0379399;  // long
+            let map;
+            let markers = [];
+            let infowindows = [];
+            $(document).ready(function () {
+                map = new naver.maps.Map('map', {
+                    center: new naver.maps.LatLng(y_cen, x_cen),
+                    zoom: 12,
+                    zoomControl: true,
+                    zoomControlOptions: {
+                        style: naver.maps.ZoomControlStyle.SMALL,
+                        position: naver.maps.Position.TOP_RIGHT
+                    }
+                });
+
+                get_matjips()
+            });
+
+            function get_matjips() {
+                $('#matjip-box').empty();
+                for (let i = 0; i < markers.length; i++) {
+                    markers[i].setMap(null);
+                    infowindows[i].close()
+                }
+                markers = [];
+                infowindows = [];
+
+                $.ajax({
+                    type: "GET",
+                    url: `/matjip`,
+                    data: {},
+                    success: function (response) {
+                        let matjips = response["matjip_list"];
+                        console.log(matjips.length);
+                        for (let i = 0; i < matjips.length; i++) {
+                            let matjip = matjips[i];
+                            make_card(i, matjip);
+                            let marker = make_marker(matjip);
+                            add_info(i, marker, matjip)
+                        }
+                    }
+                });
+            }
+
+            function make_marker(matjip) {
+                let marker_img = '';
+                if ("liked" in matjip) {
+                    marker_img = '{{ url_for("static", filename="marker-liked.png") }}'
+                } else {
+                    marker_img = '{{ url_for("static", filename="marker-default.png") }}'
+                }
+                let marker = new naver.maps.Marker({
+                    position: new naver.maps.LatLng(matjip["mapy"], matjip["mapx"]),
+                    map: map,
+                    icon: marker_img
+                });
+                markers.push(marker);
+                return marker
+            }
+
+            function make_card(i, matjip) {
+                let html_temp = ``;
+                if ("liked" in matjip) {
+                    html_temp = `<div class="card" id="card-${i}">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><a href="javascript:click2center(${i})" class="matjip-title">${matjip['title']}</a></h5>
+                                        <h6 class="card-subtitle mb-2 text-muted">${matjip['category']}</h6>
+                                        <i class="fa fa-bookmark" onclick="bookmark('${matjip['title']}', '${matjip['address']}', 'unlike')"></i>
+                                        <p class="card-text">${matjip['address']}</p>
+                                        <p class="card-text" style="color:blue;">${matjip['show']}</p>
+                                    </div>
+                                 </div>`;
+                } else {
+                    html_temp = `<div class="card" id="card-${i}">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><a href="javascript:click2center(${i})" class="matjip-title">${matjip['title']}</a></h5>
+                                        <h6 class="card-subtitle mb-2 text-muted">${matjip['category']}</h6>
+                                        <i class="fa fa-bookmark-o" onclick="bookmark('${matjip['title']}', '${matjip['address']}', 'like')"></i>
+                                        <p class="card-text">${matjip['address']}</p>
+                                        <p class="card-text" style="color:blue;">${matjip['show']}</p>
+                                    </div>
+                                 </div>`;
+                }
+
+
+                $('#matjip-box').append(html_temp);
+            }
+
+            function add_info(i, marker, matjip) {
+                let html_temp = `<div class="iw-inner">
+                                    <h5>${matjip['title']}</h5>
+                                    <p>${matjip['address']}
+                                    </div>`;
+                let infowindow = new naver.maps.InfoWindow({
+                    content: html_temp,
+                    maxWidth: 200,
+                    backgroundColor: "#fff",
+                    borderColor: "#888",
+                    borderWidth: 2,
+                    anchorSize: new naver.maps.Size(15, 15),
+                    anchorSkew: true,
+                    anchorColor: "#fff",
+                    pixelOffset: new naver.maps.Point(10, -10)
+                });
+                infowindows.push(infowindow);
+                naver.maps.Event.addListener(marker, "click", function (e) {
+                    console.log("clicked", infowindows.length);
+                    if (infowindow.getMap()) {
+                        infowindow.close();
+                    } else {
+                        infowindow.open(map, marker);
+                        map.setCenter(infowindow.position);
+                        $("#matjip-box").animate({
+                            scrollTop: $("#matjip-box").get(0).scrollTop + $(`#card-${i}`).position().top
+                        }, 2000);
+                    }
+                });
+            }
+
+            function click2center(i) {
+                let marker = markers[i];
+                let infowindow = infowindows[i];
+                if (infowindow.getMap()) {
+                    infowindow.close();
+                } else {
+                    infowindow.open(map, marker);
+                    map.setCenter(infowindow.position)
+                }
+            }
+
+            function bookmark(title, address, action) {
+                $.ajax({
+                    type: "POST",
+                    url: "/like_matjip",
+                    data: {
+                        title_give: title,
+                        address_give: address,
+                        action_give: action
+                    },
+                    success: function (response) {
+                        if (response["result"] == "success") {
+                            get_matjips()
+                        }
+                    }
+                })
+            }
+        </script>
+
+    </head>
+
+    <body>
+        <div class="wrap">
+            <div class="banner">
+                <div class="d-flex flex-column align-items-center"
+                     style="background-color: rgba(0,0,0,0.5);width: 100%;height: 100%;">
+                    <h1 class="title mt-5 mb-2">스파르타 맛집 지도</h1>
+                    <button type="button" onclick="get_matjips()" class="btn btn-sparta">
+                        새로고침하고 더 많은 맛집 보기
+                    </button>
+                </div>
+            </div>
+            <div id="map"></div>
+
+            <div class="matjip-list" id="matjip-box">
+            </div>
+        </div>
+
+    </body>
+
+</html>

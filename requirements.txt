@@ -1,0 +1,6 @@
+flask
+pymongo
+requests
+selenium
+beautifulsoup4
+pyjwt~=1.7.1
